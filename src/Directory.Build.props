@@ -3,38 +3,14 @@
     <Company>Brighter Command</Company>
     <Authors>Ian Cooper</Authors>
     <Copyright>Copyright © Ian Cooper 2014</Copyright>
-    <PackageReleaseNotes>https://github.com/BrighterCommand/Brighter/blob/master/release_notes.md</PackageReleaseNotes>
-    <PackageIcon>packageicon.png</PackageIcon>
-    <PackageProjectUrl>https://www.goparamore.io/</PackageProjectUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <SignAssembly>true</SignAssembly>
-    <AssemblyOriginatorKeyFile>..\..\Brighter.snk</AssemblyOriginatorKeyFile>
+    <AssemblyOriginatorKeyFile>..\..\BrighterSlim.snk</AssemblyOriginatorKeyFile>
 
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <!-- Optional: Publish the repository URL in the built .nupkg (in the NuSpec <Repository> element) -->
-    <PublishRepositoryUrl>true</PublishRepositoryUrl>
-    <!-- Optional: Embed source files that are not tracked by the source control manager to the PDB -->
-    <!-- This is useful if you generate files during the build -->
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
-    <!-- Recommended: Embed symbols containing Source Link in the main file (exe/dll) -->
     <DebugType>embedded</DebugType>
-
     <LangVersion>latest</LangVersion>
-
-    <!-- Version numbers have to be included at the same level as source link otherwise versions are reset to 1.0.0 -->
-    <AssemblyVersion>9.0.0.0</AssemblyVersion>
-    <FileVersion>9.0.0.0</FileVersion>
-    <InformationalVersion>9.0.0</InformationalVersion>
-    <Version>9.0.0</Version>
   </PropertyGroup>
 
-  <!-- Deterministic builds ensure that the same binary is produced regardless of the machine building it -->
-  <!-- This setting is set on the build server to normalize stored file paths, should not be set for local dev -->
-  <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
-    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <None Include="..\..\images\BrighterSticker.png" Pack="true" PackagePath="packageicon.png"/>
-  </ItemGroup>
 </Project>

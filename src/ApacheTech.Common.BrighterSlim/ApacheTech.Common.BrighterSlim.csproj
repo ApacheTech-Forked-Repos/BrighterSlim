@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <Description>The Command Dispatcher pattern is an addition to the Command design pattern that decouples the dispatcher for a service from its execution. A Command Dispatcher component maps commands to handlers. A Command Processor pattern provides a  framework for handling orthogonal concerns such as logging, timeouts, or circuit breakers</Description>
     <Authors>Ian Cooper</Authors>
@@ -7,9 +7,33 @@
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <Version>9.6.1</Version>
+    <VersionPrefix></VersionPrefix>
+    <VersionSuffix></VersionSuffix>
+    <IncludeSymbols>True</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <IncludeSymbols>True</IncludeSymbols>
+
+    <EnablePackageValidation>true</EnablePackageValidation>
+    <DebugSymbols>True</DebugSymbols>
+    <DebugType>embedded</DebugType>
+    <Deterministic>True</Deterministic>
+    <RepositoryType>git</RepositoryType>
+    <EmbedUntrackedSources>True</EmbedUntrackedSources>
+    <GenerateDocumentationFile>True</GenerateDocumentationFile>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <PublishOnBuild>False</PublishOnBuild>
+    <NeutralLanguage>en</NeutralLanguage>
+    <AssemblyOriginatorKeyFile />
+  </PropertyGroup>
+
   <ItemGroup>
-    <PackageReference Include="Polly" />
-    <PackageReference Include="System.Diagnostics.DiagnosticSource" />
+    <PackageReference Include="Polly" Version="8.3.0" />
+    <PackageReference Include="Polly.Contrib.WaitAndRetry" Version="1.1.1" />
+    <PackageReference Include="Polly.Extensions.Http" Version="3.0.0" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
+    <!--<PackageReference Include="MinVer" Version="4.3.0" />-->
   </ItemGroup>
 
 </Project>
