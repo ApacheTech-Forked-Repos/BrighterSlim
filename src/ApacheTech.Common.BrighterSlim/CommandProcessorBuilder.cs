@@ -1,9 +1,9 @@
-#region Licence
+﻿#region Licence
 /* The MIT License (MIT)
-Copyright © 2014 Ian Cooper <ian_hammond_cooper@yahoo.co.uk>
+Copyright Â© 2014 Ian Cooper <ian_hammond_cooper@yahoo.co.uk>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the “Software”), to deal
+of this software and associated documentation files (the â€œSoftwareâ€), to deal
 in the Software without restriction, including without limitation the rights
 to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
@@ -12,7 +12,7 @@ furnished to do so, subject to the following conditions:
 The above copyright notice and this permission notice shall be included in
 all copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+THE SOFTWARE IS PROVIDED â€œAS ISâ€, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
@@ -24,7 +24,6 @@ THE SOFTWARE. */
 
 using System.Collections.Generic;
 using ApacheTech.Common.BrighterSlim.FeatureSwitch;
-using Polly.Registry;
 
 namespace ApacheTech.Common.BrighterSlim
 {
@@ -68,14 +67,13 @@ namespace ApacheTech.Common.BrighterSlim
     ///     </item>
     /// </list> 
     /// </summary>
-    public class CommandProcessorBuilder : INeedAHandlers, INeedPolicy, INeedMessaging, INeedARequestContext, IAmACommandProcessorBuilder
+    public class CommandProcessorBuilder : INeedAHandlers, INeedMessaging, INeedARequestContext, IAmACommandProcessorBuilder
     {
         private IAmAMessageMapperRegistry _messageMapperRegistry;
         private IAmAMessageTransformerFactory _transformerFactory;
         private IAmARequestContextFactory _requestContextFactory;
         private IAmASubscriberRegistry _registry;
         private IAmAHandlerFactory _handlerFactory;
-        private IPolicyRegistry<string> _policyRegistry;
         private IAmAFeatureSwitchRegistry _featureSwitchRegistry;
         private IAmAnExternalBusService _bus = null;
         private bool _useRequestReplyQueues = false;
@@ -85,7 +83,6 @@ namespace ApacheTech.Common.BrighterSlim
 
         private CommandProcessorBuilder()
         {
-            DefaultPolicy();
         }
 
         /// <summary>
@@ -102,7 +99,7 @@ namespace ApacheTech.Common.BrighterSlim
         /// </summary>
         /// <param name="handlerConfiguration">The handler configuration.</param>
         /// <returns>INeedPolicy.</returns>
-        public INeedPolicy Handlers(HandlerConfiguration handlerConfiguration)
+        public INeedMessaging Handlers(HandlerConfiguration handlerConfiguration)
         {
             _registry = handlerConfiguration.SubscriberRegistry;
             _handlerFactory = handlerConfiguration.HandlerFactory;
@@ -117,36 +114,6 @@ namespace ApacheTech.Common.BrighterSlim
         public INeedAHandlers ConfigureFeatureSwitches(IAmAFeatureSwitchRegistry featureSwitchRegistry)
         {
             _featureSwitchRegistry = featureSwitchRegistry;
-            return this;
-        }
-
-        /// <summary>
-        /// Supplies the specified the policy registry, so we can use policies for Task Queues or in user-defined request handlers such as ExceptionHandler
-        /// that provide quality of service concerns
-        /// </summary>
-        /// <param name="policyRegistry">The policy registry.</param>
-        /// <returns>INeedLogging.</returns>
-        /// <exception cref="ConfigurationException">The policy registry is missing the CommandProcessor.RETRYPOLICY policy which is required</exception>
-        /// <exception cref="ConfigurationException">The policy registry is missing the CommandProcessor.CIRCUITBREAKER policy which is required</exception>
-        public INeedMessaging Policies(IPolicyRegistry<string> policyRegistry)
-        {
-            if (!policyRegistry.ContainsKey(CommandProcessor.RETRYPOLICY))
-                throw new ConfigurationException("The policy registry is missing the CommandProcessor.RETRYPOLICY policy which is required");
-
-            if (!policyRegistry.ContainsKey(CommandProcessor.CIRCUITBREAKER))
-                throw new ConfigurationException("The policy registry is missing the CommandProcessor.CIRCUITBREAKER policy which is required");
-
-            _policyRegistry = policyRegistry;
-            return this;
-        }
-
-        /// <summary>
-        /// Use this if you do not require a policy and only want to retry once(i.e. No Tasks Queues or QoS needs).
-        /// </summary>
-        /// <returns>INeedLogging.</returns>
-        public INeedMessaging DefaultPolicy()
-        {
-            _policyRegistry = new DefaultPolicy();
             return this;
         }
 
@@ -218,7 +185,6 @@ namespace ApacheTech.Common.BrighterSlim
 
             _bus = new ExternalBusServices<Message, TTransaction>(
                 configuration.ProducerRegistry,
-                _policyRegistry,
                 outbox,
                 configuration.OutboxBulkChunkSize,
                 configuration.OutboxTimeout);
@@ -256,20 +222,20 @@ namespace ApacheTech.Common.BrighterSlim
             if (_bus == null)
             {
                 return new CommandProcessor(subscriberRegistry: _registry, handlerFactory: _handlerFactory,
-                    requestContextFactory: _requestContextFactory, policyRegistry: _policyRegistry,
+                    requestContextFactory: _requestContextFactory,
                     featureSwitchRegistry: _featureSwitchRegistry);
             }
 
             if (!_useRequestReplyQueues)
                 return new CommandProcessor(subscriberRegistry: _registry, handlerFactory: _handlerFactory,
-                    requestContextFactory: _requestContextFactory, policyRegistry: _policyRegistry,
+                    requestContextFactory: _requestContextFactory,
                     mapperRegistry: _messageMapperRegistry, bus: _bus,
                     featureSwitchRegistry: _featureSwitchRegistry, inboxConfiguration: _inboxConfiguration,
                     messageTransformerFactory: _transformerFactory);
 
             if (_useRequestReplyQueues)
                 return new CommandProcessor(subscriberRegistry: _registry, handlerFactory: _handlerFactory,
-                    requestContextFactory: _requestContextFactory, policyRegistry: _policyRegistry,
+                    requestContextFactory: _requestContextFactory,
                     mapperRegistry: _messageMapperRegistry, bus: _bus,
                     featureSwitchRegistry: _featureSwitchRegistry, inboxConfiguration: _inboxConfiguration,
                     messageTransformerFactory: _transformerFactory, replySubscriptions: _replySubscriptions,
@@ -279,121 +245,4 @@ namespace ApacheTech.Common.BrighterSlim
                 "The configuration options chosen cannot be used to construct a command processor");
         }
     }
-
-    #region Progressive interfaces
-    /// <summary>
-    /// Interface INeedAHandlers
-    /// </summary>
-    public interface INeedAHandlers
-    {
-        /// <summary>
-        /// Handlers the specified the registry.
-        /// </summary>
-        /// <param name="theRegistry">The registry.</param>
-        /// <returns>INeedPolicy.</returns>
-        INeedPolicy Handlers(HandlerConfiguration theRegistry);
-
-        /// <summary>
-        /// Configure Feature Switches for the Handlers
-        /// </summary>
-        /// <param name="featureSwitchRegistry"></param>
-        /// <returns></returns>
-        INeedAHandlers ConfigureFeatureSwitches(IAmAFeatureSwitchRegistry featureSwitchRegistry);
-    }
-
-    /// <summary>
-    /// Interface INeedPolicy
-    /// </summary>
-    public interface INeedPolicy
-    {
-        /// <summary>
-        /// Policies the specified policy registry.
-        /// </summary>
-        /// <param name="policyRegistry">The policy registry.</param>
-        /// <returns>INeedLogging.</returns>
-        INeedMessaging Policies(IPolicyRegistry<string> policyRegistry);
-        /// <summary>
-        /// Knows the policy.
-        /// </summary>
-        /// <returns>INeedMessaging.</returns>
-        INeedMessaging DefaultPolicy();
-    }
-
-
-    /// <summary>
-    /// Interface INeedMessaging
-    /// Note that a single command builder does not support both task queues and rpc, using the builder
-    /// </summary>
-    public interface INeedMessaging
-    {
-        /// <summary>
-        /// The <see cref="CommandProcessor"/> wants to support <see cref="CommandProcessor.Post{T}(T)"/> or <see cref="CommandProcessor.Repost"/> using an external bus.
-        /// You need to provide a policy to specify how QoS issues, specifically <see cref="CommandProcessor.RETRYPOLICY "/> or <see cref="CommandProcessor.CIRCUITBREAKER "/> 
-        /// are handled by adding appropriate <see cref="CommandProcessorBuilder.Policies"/> when choosing this option.
-        /// </summary>
-        /// <param name="busType">The type of Bus: In-memory, Db, or RPC</param>
-        /// <param name="bus">The bus that we wish to use</param>
-        /// <param name="messageMapperRegistry">The register for message mappers that map outgoing requests to messages</param>
-        /// <param name="transformerFactory">A factory for transforms used for common transformations to outgoing messages</param>
-        /// <param name="responseChannelFactory">If using RPC the factory for reply channels</param>
-        /// <param name="subscriptions">If using RPC, any reply subscriptions</param>
-        /// <param name="inboxConfiguration">What is the inbox configuration</param>
-        /// <returns></returns>
-        INeedARequestContext ExternalBus(
-            ExternalBusType busType,
-            IAmAnExternalBusService bus,
-            IAmAMessageMapperRegistry messageMapperRegistry,
-            IAmAMessageTransformerFactory transformerFactory,
-            IAmAChannelFactory responseChannelFactory = null,
-            IEnumerable<Subscription> subscriptions = null,
-            InboxConfiguration inboxConfiguration = null
-            );
-
-        /// <summary>
-        /// We don't send messages out of process
-        /// </summary>
-        /// <returns>INeedARequestContext.</returns>
-        INeedARequestContext NoExternalBus();
-
-        /// <summary>
-        /// The <see cref="CommandProcessor"/> wants to support <see cref="CommandProcessor.Post{T}(T)"/> or <see cref="CommandProcessor.Repost"/> using an external bus.
-        /// You need to provide a policy to specify how QoS issues, specifically <see cref="CommandProcessor.RETRYPOLICY "/> or <see cref="CommandProcessor.CIRCUITBREAKER "/> 
-        /// are handled by adding appropriate <see cref="CommandProcessorBuilder.Policies"/> when choosing this option.
-        /// 
-        /// </summary>
-        /// <param name="configuration">The Task Queues configuration.</param>
-        /// <param name="outbox">The Outbox.</param>
-        /// <param name="transactionProvider"></param>
-        /// <returns>INeedARequestContext.</returns>
-        INeedARequestContext ExternalBusCreate<TTransaction>(
-            ExternalBusConfiguration configuration,
-            IAmAnOutbox outbox,
-            IAmABoxTransactionProvider<TTransaction> transactionProvider);
-    }
-
-    /// <summary>
-    /// Interface INeedARequestContext
-    /// </summary>
-    public interface INeedARequestContext
-    {
-        /// <summary>
-        /// Requests the context factory.
-        /// </summary>
-        /// <param name="requestContextFactory">The request context factory.</param>
-        /// <returns>IAmACommandProcessorBuilder.</returns>
-        IAmACommandProcessorBuilder RequestContextFactory(IAmARequestContextFactory requestContextFactory);
-    }
-
-    /// <summary>
-    /// Interface IAmACommandProcessorBuilder
-    /// </summary>
-    public interface IAmACommandProcessorBuilder
-    {
-        /// <summary>
-        /// Builds this instance.
-        /// </summary>
-        /// <returns>CommandProcessor.</returns>
-        CommandProcessor Build();
-    }
-    #endregion
 }

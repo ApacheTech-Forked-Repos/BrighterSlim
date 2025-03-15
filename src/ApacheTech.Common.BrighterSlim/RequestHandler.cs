@@ -25,9 +25,6 @@ THE SOFTWARE. */
 using System;
 using System.Linq;
 using System.Reflection;
-using ApacheTech.Common.BrighterSlim.Policies.Attributes;
-using ApacheTech.Common.BrighterSlim.Policies.Handlers;
-using Polly.CircuitBreaker;
 
 namespace ApacheTech.Common.BrighterSlim
 {

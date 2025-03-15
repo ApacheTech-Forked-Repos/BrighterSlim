@@ -69,12 +69,5 @@ namespace ApacheTech.Common.BrighterSlim
         /// </summary>
         /// <returns>true if defined</returns>
         bool HasBulkOutbox();
-
-        /// <summary>
-        /// Retry an action via the policy engine
-        /// </summary>
-        /// <param name="action">The Action to try</param>
-        /// <returns></returns>
-        bool Retry(Action action);
     }
 }

@@ -4,8 +4,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Polly;
-using Polly.Registry;
 
 namespace ApacheTech.Common.BrighterSlim
 {
@@ -16,7 +14,6 @@ namespace ApacheTech.Common.BrighterSlim
     public class ExternalBusServices<TMessage, TTransaction> : IAmAnExternalBusService
         where TMessage : Message
     {
-        private readonly IPolicyRegistry<string> _policyRegistry;
         private readonly IAmAnOutboxSync<TMessage, TTransaction> _outBox;
         private readonly IAmAnOutboxAsync<TMessage, TTransaction> _asyncOutbox;
         private readonly int _outboxTimeout;
@@ -49,14 +46,12 @@ namespace ApacheTech.Common.BrighterSlim
         /// <param name="outboxTimeout">How long to timeout for with an outbox</param>
         public ExternalBusServices(
             IAmAProducerRegistry producerRegistry,
-            IPolicyRegistry<string> policyRegistry,
             IAmAnOutbox outbox = null,
             int outboxBulkChunkSize = 100,
             int outboxTimeout = 300
             )
         {
             _producerRegistry = producerRegistry ?? throw new ConfigurationException("Missing Producer Registry for External Bus Services");
-            _policyRegistry = policyRegistry ?? throw new ConfigurationException("Missing Policy Registry for External Bus Services");
 
             //default to in-memory; expectation for a in memory box is Message and CommittableTransaction
             if (outbox == null)
@@ -109,16 +104,16 @@ namespace ApacheTech.Common.BrighterSlim
         {
             CheckOutboxOutstandingLimit();
 
-            var written = await RetryAsync(
-                async ct =>
-                {
-                    await _asyncOutbox.AddAsync(message, _outboxTimeout, ct, overridingTransactionProvider)
-                        .ConfigureAwait(continueOnCapturedContext);
-                },
-                continueOnCapturedContext, cancellationToken).ConfigureAwait(continueOnCapturedContext);
+            try
+            {
 
-            if (!written)
-                throw new ChannelFailureException($"Could not write request {request.Id} to the outbox");
+                await _asyncOutbox.AddAsync(message, _outboxTimeout, cancellationToken, overridingTransactionProvider)
+                    .ConfigureAwait(continueOnCapturedContext);
+            }
+            catch (Exception ex)
+            {
+                throw new ChannelFailureException($"Could not write request {request.Id} to the outbox", ex);
+            }
             Activity.Current?.AddEvent(new ActivityEvent(ADDMESSAGETOOUTBOX,
                 tags: new ActivityTagsCollection { { "MessageId", message.Id } }));
         }
@@ -146,16 +141,15 @@ namespace ApacheTech.Common.BrighterSlim
             {
                 foreach (var chunk in ChunkMessages(messages))
                 {
-                    var written = await RetryAsync(
-                        async ct =>
-                        {
-                            await box.AddAsync(chunk, _outboxTimeout, ct, overridingTransactionProvider)
+                    try
+                    {
+                        await box.AddAsync(chunk, _outboxTimeout, cancellationToken, overridingTransactionProvider)
                                 .ConfigureAwait(continueOnCapturedContext);
-                        },
-                        continueOnCapturedContext, cancellationToken).ConfigureAwait(continueOnCapturedContext);
-
-                    if (!written)
-                        throw new ChannelFailureException($"Could not write {chunk.Count()} requests to the outbox");
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new ChannelFailureException($"Could not write {chunk.Count()} messages to the outbox", ex);
+                    }
                 }
             }
             else
@@ -181,10 +175,14 @@ namespace ApacheTech.Common.BrighterSlim
         {
             CheckOutboxOutstandingLimit();
 
-            var written = Retry(() => { _outBox.Add(message, _outboxTimeout, overridingTransactionProvider); });
-
-            if (!written)
-                throw new ChannelFailureException($"Could not write request {request.Id} to the outbox");
+            try
+            {
+                _outBox.Add(message, _outboxTimeout, overridingTransactionProvider);
+            }
+            catch (Exception ex)
+            {
+                throw new ChannelFailureException($"Could not write request {request.Id} to the outbox", ex);
+            }
             Activity.Current?.AddEvent(new ActivityEvent(ADDMESSAGETOOUTBOX,
                 tags: new ActivityTagsCollection { { "MessageId", message.Id } }));
         }
@@ -202,11 +200,14 @@ namespace ApacheTech.Common.BrighterSlim
             {
                 foreach (var chunk in ChunkMessages(messages))
                 {
-                    var written =
-                        Retry(() => { box.Add(chunk, _outboxTimeout, overridingTransactionProvider); });
-
-                    if (!written)
-                        throw new ChannelFailureException($"Could not write {chunk.Count()} messages to the outbox");
+                    try
+                    {
+                        box.Add(chunk, _outboxTimeout, overridingTransactionProvider);
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new ChannelFailureException($"Could not write {chunk.Count()} messages to the outbox", ex);
+                    }
                 }
             }
             else
@@ -227,7 +228,7 @@ namespace ApacheTech.Common.BrighterSlim
             //We assume that this only occurs over a blocking producer
             var producer = _producerRegistry.LookupByOrDefault(outMessage.Header.Topic);
             if (producer is IAmAMessageProducerSync producerSync)
-                Retry(() => producerSync.Send(outMessage));
+                producerSync.Send(outMessage);
         }
 
         /// <summary>
@@ -365,8 +366,7 @@ namespace ApacheTech.Common.BrighterSlim
                     if (success)
                     {
                         if (_asyncOutbox != null)
-                            await RetryAsync(async ct =>
-                                await _asyncOutbox.MarkDispatchedAsync(id, DateTime.UtcNow, cancellationToken: ct));
+                            await _asyncOutbox.MarkDispatchedAsync(id, DateTime.UtcNow);
                     }
                 };
                 return true;
@@ -389,7 +389,7 @@ namespace ApacheTech.Common.BrighterSlim
                     if (success)
                     {
                         if (_outBox != null)
-                            Retry(() => _outBox.MarkDispatched(id, DateTime.UtcNow));
+                            _outBox.MarkDispatched(id, DateTime.UtcNow);
                     }
                 };
                 return true;
@@ -436,28 +436,6 @@ namespace ApacheTech.Common.BrighterSlim
 #pragma warning disable CS0618
             return _outBox is IAmABulkOutboxSync<TMessage, TTransaction>;
 #pragma warning restore CS0618
-        }
-
-        /// <summary>
-        /// Retry an action via the policy engine
-        /// </summary>
-        /// <param name="action">The Action to try</param>
-        /// <returns></returns>
-        public bool Retry(Action action)
-        {
-            var policy = _policyRegistry.Get<Policy>(CommandProcessor.RETRYPOLICY);
-            var result = policy.ExecuteAndCapture(action);
-            if (result.Outcome != OutcomeType.Successful)
-            {
-                if (result.FinalException != null)
-                {
-                    CheckOutstandingMessages();
-                }
-
-                return false;
-            }
-
-            return true;
         }
 
         private IEnumerable<List<TMessage>> ChunkMessages(IEnumerable<TMessage> messages)
@@ -600,16 +578,11 @@ namespace ApacheTech.Common.BrighterSlim
 
                 if (producer is IAmAMessageProducerSync producerSync)
                 {
-                    if (producer is ISupportPublishConfirmation)
+                    //mark dispatch handled by a callback - set in constructor
+                    producerSync.Send(message);
+                    if (producer is not ISupportPublishConfirmation)
                     {
-                        //mark dispatch handled by a callback - set in constructor
-                        Retry(() => { producerSync.Send(message); });
-                    }
-                    else
-                    {
-                        var sent = Retry(() => { producerSync.Send(message); });
-                        if (sent)
-                            Retry(() => _outBox.MarkDispatched(message.Id, DateTime.UtcNow));
+                        _outBox.MarkDispatched(message.Id, DateTime.UtcNow);
                     }
                 }
                 else
@@ -635,26 +608,12 @@ namespace ApacheTech.Common.BrighterSlim
                     if (producer is ISupportPublishConfirmation)
                     {
                         //mark dispatch handled by a callback - set in constructor
-                        await RetryAsync(
-                                async ct =>
-                                    await producerAsync.SendAsync(message).ConfigureAwait(continueOnCapturedContext),
-                                continueOnCapturedContext,
-                                cancellationToken)
-                            .ConfigureAwait(continueOnCapturedContext);
+                        await producerAsync.SendAsync(message).ConfigureAwait(continueOnCapturedContext);
                     }
                     else
                     {
-                        var sent = await RetryAsync(
-                                async ct =>
-                                    await producerAsync.SendAsync(message).ConfigureAwait(continueOnCapturedContext),
-                                continueOnCapturedContext,
-                                cancellationToken)
-                            .ConfigureAwait(continueOnCapturedContext);
-
-                        if (sent)
-                            await RetryAsync(
-                                async ct => await _asyncOutbox.MarkDispatchedAsync(message.Id, DateTime.UtcNow,
-                                    cancellationToken: cancellationToken),
+                        await producerAsync.SendAsync(message).ConfigureAwait(continueOnCapturedContext);
+                        await _asyncOutbox.MarkDispatchedAsync(message.Id, DateTime.UtcNow,
                                 cancellationToken: cancellationToken);
                     }
                 }
@@ -687,9 +646,8 @@ namespace ApacheTech.Common.BrighterSlim
                     {
                         if (!(producer is ISupportPublishConfirmation))
                         {
-                            await RetryAsync(async ct => await _asyncOutbox.MarkDispatchedAsync(successfulMessage,
-                                    DateTime.UtcNow, cancellationToken: cancellationToken),
-                                cancellationToken: cancellationToken);
+                            await _asyncOutbox.MarkDispatchedAsync(successfulMessage,
+                                    DateTime.UtcNow, cancellationToken: cancellationToken);
                         }
                     }
                 }
@@ -731,26 +689,6 @@ namespace ApacheTech.Common.BrighterSlim
             {
                 s_checkOutstandingSemaphoreToken.Release();
             }
-        }
-
-        private async Task<bool> RetryAsync(Func<CancellationToken, Task> send, bool continueOnCapturedContext = false,
-            CancellationToken cancellationToken = default)
-        {
-            var result = await _policyRegistry.Get<AsyncPolicy>(CommandProcessor.RETRYPOLICYASYNC)
-                .ExecuteAndCaptureAsync(send, cancellationToken, continueOnCapturedContext)
-                .ConfigureAwait(continueOnCapturedContext);
-
-            if (result.Outcome != OutcomeType.Successful)
-            {
-                if (result.FinalException != null)
-                {
-                    CheckOutstandingMessages();
-                }
-
-                return false;
-            }
-
-            return true;
         }
     }
 }

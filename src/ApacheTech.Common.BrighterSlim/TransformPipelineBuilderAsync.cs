@@ -72,12 +72,9 @@ namespace ApacheTech.Common.BrighterSlim
         }
 
         /// <summary>
-        /// Builds a pipeline.
-        /// Anything marked with <see cref=""/> will run before the <see cref="IAmAMessageMapper{TRequest}"/>
-        /// Anything marked with
+        ///     Builds a pipeline.
         /// </summary>
         /// <typeparam name="TRequest"></typeparam>
-        /// <returns></returns>
         public WrapPipelineAsync<TRequest> BuildWrapPipeline<TRequest>() where TRequest : class, IRequest
         {
             try
@@ -145,6 +142,9 @@ namespace ApacheTech.Common.BrighterSlim
             return transforms;
         }
 
+        /// <summary>
+        ///     Clear the cache of message mapper transform attributes. This will not be recalculated post start up.
+        /// </summary>
         public static void ClearPipelineCache()
         {
             s_wrapTransformsMemento.Clear();

@@ -73,13 +73,8 @@ namespace ApacheTech.Common.BrighterSlim
         }
 
         /// <summary>
-        /// Builds a pipeline.
-        /// Anything marked with <see cref=""/> will run before the <see cref="IAmAMessageMapper{TRequest}"/>
-        /// Anything marked with
+        ///     Builds a pipeline.
         /// </summary>
-        /// <param name="request"></param>
-        /// <typeparam name="TRequest"></typeparam>
-        /// <returns></returns>
         public WrapPipeline<TRequest> BuildWrapPipeline<TRequest>() where TRequest : class, IRequest
         {
             try

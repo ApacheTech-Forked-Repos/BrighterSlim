@@ -1,9 +1,9 @@
 ﻿#region Licence
 /* The MIT License (MIT)
-Copyright © 2014 Ian Cooper <ian_hammond_cooper@yahoo.co.uk>
+Copyright Â© 2014 Ian Cooper <ian_hammond_cooper@yahoo.co.uk>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the “Software”), to deal
+of this software and associated documentation files (the â€œSoftwareâ€), to deal
 in the Software without restriction, including without limitation the rights
 to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
@@ -12,7 +12,7 @@ furnished to do so, subject to the following conditions:
 The above copyright notice and this permission notice shall be included in
 all copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+THE SOFTWARE IS PROVIDED â€œAS ISâ€, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
@@ -22,36 +22,29 @@ THE SOFTWARE. */
 
 #endregion
 
-using System.Collections.Generic;
 using ApacheTech.Common.BrighterSlim.FeatureSwitch;
 
 namespace ApacheTech.Common.BrighterSlim
 {
+    #region Progressive interfaces
     /// <summary>
-    /// Class RequestContext
-    /// Any pipeline has a request context that allows you to flow information between instances of <see cref="IHandleRequests"/>
-    /// The default in-memory <see cref="RequestContext"/> created by an <see cref="InMemoryRequestContextFactory"/> is suitable for most purposes
-    /// and this interface is mainly provided for testing
+    /// Interface INeedAHandlers
     /// </summary>
-    public class RequestContext : IRequestContext
+    public interface INeedAHandlers
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="RequestContext"/> class.
+        /// Handlers the specified the registry.
         /// </summary>
-        public RequestContext()
-        {
-            Bag = new Dictionary<string, object>();
-        }
+        /// <param name="theRegistry">The registry.</param>
+        /// <returns>INeedPolicy.</returns>
+        INeedMessaging Handlers(HandlerConfiguration theRegistry);
 
         /// <summary>
-        /// Gets the bag.
+        /// Configure Feature Switches for the Handlers
         /// </summary>
-        /// <value>The bag.</value>
-        public Dictionary<string, object> Bag { get; private set; }
-
-        /// <summary>
-        /// Gets the Feature Switches
-        /// </summary>
-        public IAmAFeatureSwitchRegistry FeatureSwitches { get; set; }
+        /// <param name="featureSwitchRegistry"></param>
+        /// <returns></returns>
+        INeedAHandlers ConfigureFeatureSwitches(IAmAFeatureSwitchRegistry featureSwitchRegistry);
     }
+    #endregion
 }

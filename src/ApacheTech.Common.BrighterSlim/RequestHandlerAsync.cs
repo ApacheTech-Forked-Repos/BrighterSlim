@@ -28,9 +28,6 @@ using System.Reflection;
 using System.Reflection.Metadata;
 using System.Threading;
 using System.Threading.Tasks;
-using ApacheTech.Common.BrighterSlim.Policies.Attributes;
-using ApacheTech.Common.BrighterSlim.Policies.Handlers;
-using Polly.CircuitBreaker;
 
 namespace ApacheTech.Common.BrighterSlim
 {

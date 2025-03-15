@@ -130,14 +130,11 @@ namespace ApacheTech.Common.BrighterSlim
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="MessageBody"/> class using a byte array.
-        /// TODO: We don't support the range of options on Span<T> on netstandard2.0 that let's us
-        /// flow through a ReadOnlyMemory<byte> for serialization so we allocate here as well as in
-        /// PullConsumer when we probably don't need this allocation.
-        /// We can fix in .NET 7.0 over the dead-end fork of netstandard2.1
+        ///     Initialises a new instance of the <see cref="MessageBody"/> class using a byte array.
         /// </summary>
         /// <param name="body"></param>
         /// <param name="contentType"></param>
+        /// <param name="characterEncoding"></param>
         public MessageBody(in ReadOnlyMemory<byte> body, string contentType = APPLICATION_JSON, CharacterEncoding characterEncoding = CharacterEncoding.UTF8)
         {
             Bytes = body.ToArray();
@@ -147,7 +144,7 @@ namespace ApacheTech.Common.BrighterSlim
 
 
         /// <summary>
-        /// Converts the body to a character encoded string.
+        ///     Converts the body to a character encoded string.
         /// </summary>
         /// <returns></returns>
         public string ToCharacterEncodedString(CharacterEncoding characterEncoding)

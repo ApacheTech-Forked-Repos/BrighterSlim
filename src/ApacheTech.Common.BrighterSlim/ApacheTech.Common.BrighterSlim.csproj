@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <Version>9.6.1</Version>
+    <Version>9.7.7</Version>
     <VersionPrefix></VersionPrefix>
     <VersionSuffix></VersionSuffix>
     <IncludeSymbols>True</IncludeSymbols>
@@ -26,14 +26,19 @@
     <PublishOnBuild>False</PublishOnBuild>
     <NeutralLanguage>en</NeutralLanguage>
     <AssemblyOriginatorKeyFile />
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Polly" Version="8.3.0" />
-    <PackageReference Include="Polly.Contrib.WaitAndRetry" Version="1.1.1" />
-    <PackageReference Include="Polly.Extensions.Http" Version="3.0.0" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
     <!--<PackageReference Include="MinVer" Version="4.3.0" />-->
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>

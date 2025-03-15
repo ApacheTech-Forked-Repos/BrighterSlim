@@ -32,8 +32,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
 using ApacheTech.Common.BrighterSlim.FeatureSwitch;
-using Polly;
-using Polly.Registry;
 using Exception = System.Exception;
 
 namespace ApacheTech.Common.BrighterSlim
@@ -49,7 +47,6 @@ namespace ApacheTech.Common.BrighterSlim
         private readonly IAmAHandlerFactorySync _handlerFactorySync;
         private readonly IAmAHandlerFactoryAsync _handlerFactoryAsync;
         private readonly IAmARequestContextFactory _requestContextFactory;
-        private readonly IPolicyRegistry<string> _policyRegistry;
         private readonly InboxConfiguration _inboxConfiguration;
         private readonly IAmAFeatureSwitchRegistry _featureSwitchRegistry;
         private readonly IEnumerable<Subscription> _replySubscriptions;
@@ -80,20 +77,6 @@ namespace ApacheTech.Common.BrighterSlim
         public const string RETRYPOLICY = "Paramore.Brighter.CommandProcessor.RetryPolicy";
 
         /// <summary>
-        /// Use this as an identifier for your <see cref="Policy"/> that determines for how long to break the circuit when communication with the Work Queue fails.
-        /// Register that policy with your <see cref="IPolicyRegistry{TKey}"/> such as <see cref="PolicyRegistry"/>
-        /// You can use this an identifier for you own policies, if your generic policy is the same as your Work Queue policy.
-        /// </summary>
-        public const string CIRCUITBREAKERASYNC = "Paramore.Brighter.CommandProcessor.CircuitBreaker.Async";
-
-        /// <summary>
-        /// Use this as an identifier for your <see cref="Policy"/> that determines the retry strategy when communication with the Work Queue fails.
-        /// Register that policy with your <see cref="IPolicyRegistry{TKey}"/> such as <see cref="PolicyRegistry"/>
-        /// You can use this an identifier for you own policies, if your generic policy is the same as your Work Queue policy.
-        /// </summary>
-        public const string RETRYPOLICYASYNC = "Paramore.Brighter.CommandProcessor.RetryPolicy.Async";
-
-        /// <summary>
         /// We want to use double lock to let us pass parameters to the constructor from the first instance
         /// </summary>
         private static IAmAnExternalBusService _bus = null;
@@ -106,14 +89,12 @@ namespace ApacheTech.Common.BrighterSlim
         /// <param name="subscriberRegistry">The subscriber registry.</param>
         /// <param name="handlerFactory">The handler factory.</param>
         /// <param name="requestContextFactory">The request context factory.</param>
-        /// <param name="policyRegistry">The policy registry.</param>
         /// <param name="featureSwitchRegistry">The feature switch config provider.</param>
         /// <param name="inboxConfiguration">Do we want to insert an inbox handler into pipelines without the attribute. Null (default = no), yes = how to configure</param>
         public CommandProcessor(
             IAmASubscriberRegistry subscriberRegistry,
             IAmAHandlerFactory handlerFactory,
             IAmARequestContextFactory requestContextFactory,
-            IPolicyRegistry<string> policyRegistry,
             IAmAFeatureSwitchRegistry featureSwitchRegistry = null,
             InboxConfiguration inboxConfiguration = null)
         {
@@ -129,7 +110,6 @@ namespace ApacheTech.Common.BrighterSlim
                 _handlerFactoryAsync = handlerFactoryAsync;
 
             _requestContextFactory = requestContextFactory;
-            _policyRegistry = policyRegistry;
             _featureSwitchRegistry = featureSwitchRegistry;
             _inboxConfiguration = inboxConfiguration;
         }
@@ -156,7 +136,6 @@ namespace ApacheTech.Common.BrighterSlim
             IAmASubscriberRegistry subscriberRegistry,
             IAmAHandlerFactory handlerFactory,
             IAmARequestContextFactory requestContextFactory,
-            IPolicyRegistry<string> policyRegistry,
             IAmAnExternalBusService bus,
             IAmAMessageMapperRegistry mapperRegistry = null,
             IAmAFeatureSwitchRegistry featureSwitchRegistry = null,
@@ -166,7 +145,7 @@ namespace ApacheTech.Common.BrighterSlim
             IEnumerable<Subscription> replySubscriptions = null,
             IAmAChannelFactory responseChannelFactory = null
             )
-            : this(subscriberRegistry, handlerFactory, requestContextFactory, policyRegistry, featureSwitchRegistry, inboxConfiguration)
+            : this(subscriberRegistry, handlerFactory, requestContextFactory, featureSwitchRegistry, inboxConfiguration)
         {
             _responseChannelFactory = responseChannelFactory;
             _replySubscriptions = replySubscriptions;
@@ -196,7 +175,6 @@ namespace ApacheTech.Common.BrighterSlim
         /// <param name="replySubscriptions">The Subscriptions for creating the reply queues</param>
         public CommandProcessor(
             IAmARequestContextFactory requestContextFactory,
-            IPolicyRegistry<string> policyRegistry,
             IAmAnExternalBusService bus,
             IAmAMessageMapperRegistry mapperRegistry = null,
             IAmAFeatureSwitchRegistry featureSwitchRegistry = null,
@@ -206,7 +184,6 @@ namespace ApacheTech.Common.BrighterSlim
             IEnumerable<Subscription> replySubscriptions = null)
         {
             _requestContextFactory = requestContextFactory;
-            _policyRegistry = policyRegistry;
             _featureSwitchRegistry = featureSwitchRegistry;
             _inboxConfiguration = inboxConfiguration;
             _replySubscriptions = replySubscriptions;
@@ -238,7 +215,6 @@ namespace ApacheTech.Common.BrighterSlim
             command.Span = span.span;
 
             var requestContext = _requestContextFactory.Create();
-            requestContext.Policies = _policyRegistry;
             requestContext.FeatureSwitches = _featureSwitchRegistry;
 
             using (var builder = new PipelineBuilder<T>(_subscriberRegistry, _handlerFactorySync, _inboxConfiguration))
@@ -281,7 +257,6 @@ namespace ApacheTech.Common.BrighterSlim
             command.Span = span.span;
 
             var requestContext = _requestContextFactory.Create();
-            requestContext.Policies = _policyRegistry;
             requestContext.FeatureSwitches = _featureSwitchRegistry;
 
             using (var builder = new PipelineBuilder<T>(_subscriberRegistry, _handlerFactoryAsync, _inboxConfiguration))
@@ -325,7 +300,6 @@ namespace ApacheTech.Common.BrighterSlim
             @event.Span = span.span;
 
             var requestContext = _requestContextFactory.Create();
-            requestContext.Policies = _policyRegistry;
             requestContext.FeatureSwitches = _featureSwitchRegistry;
 
             using (var builder = new PipelineBuilder<T>(_subscriberRegistry, _handlerFactorySync, _inboxConfiguration))
@@ -384,7 +358,6 @@ namespace ApacheTech.Common.BrighterSlim
             @event.Span = span.span;
 
             var requestContext = _requestContextFactory.Create();
-            requestContext.Policies = _policyRegistry;
             requestContext.FeatureSwitches = _featureSwitchRegistry;
 
             using (var builder = new PipelineBuilder<T>(_subscriberRegistry, _handlerFactoryAsync, _inboxConfiguration))
@@ -792,7 +765,7 @@ namespace ApacheTech.Common.BrighterSlim
                 //we do this to create the channel on the broker, or we won't have anything to send to; we 
                 //retry in case the subscription is poor. An alternative would be to extract the code from
                 //the channel to create the subscription, but this does not do much on a new queue
-                _bus.Retry(() => responseChannel.Purge());
+                responseChannel.Purge();
 
                 var outMessage = outWrapPipeline.Wrap(request);
 
@@ -803,7 +776,7 @@ namespace ApacheTech.Common.BrighterSlim
                 Message responseMessage = null;
 
                 //now we block on the receiver to try and get the message, until timeout.
-                _bus.Retry(() => responseMessage = responseChannel.Receive(timeOutInMilliseconds));
+                responseMessage = responseChannel.Receive(timeOutInMilliseconds);
 
                 TResponse response = default;
                 if (responseMessage.Header.MessageType != MessageType.MT_NONE)

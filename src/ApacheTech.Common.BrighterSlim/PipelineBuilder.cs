@@ -86,7 +86,7 @@ namespace ApacheTech.Common.BrighterSlim
 
                 return pipelines;
             }
-            catch (Exception e) when (!(e is ConfigurationException))
+            catch (Exception e) when (e is not ConfigurationException)
             {
                 throw new ConfigurationException("Error when building pipeline, see inner Exception for details", e);
             }
