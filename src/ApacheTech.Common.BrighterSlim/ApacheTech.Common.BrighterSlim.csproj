@@ -1,10 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <Description>The Command Dispatcher pattern is an addition to the Command design pattern that decouples the dispatcher for a service from its execution. A Command Dispatcher component maps commands to handlers. A Command Processor pattern provides a  framework for handling orthogonal concerns such as logging, timeouts, or circuit breakers</Description>
-    <Authors>Ian Cooper</Authors>
+    <Authors>Paramore (Ian Cooper) - Slimmed down by ApacheTech Solutions</Authors>
     <TargetFramework>net7.0</TargetFramework>
-    <PackageTags>Command;Event;Command Dispatcher;Command Processor;Request;Service;Task Queue;Work Queue;Retry;Circuit Breaker;Availability</PackageTags>
+    <PackageTags>Command;Event;Command Dispatcher;Command Processor;Request;Service;Task Queue;Work Queue;Availability</PackageTags>
     <LangVersion>latest</LangVersion>
+    <PackageReleaseNotes>
+      Removed all dependencies on external libraries, and slimmed down the original Paramore.Brighter library to provide a lightweight, dependency-free Command Dispatcher pattern implementation.
+    </PackageReleaseNotes>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -31,7 +34,6 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
-    <!--<PackageReference Include="MinVer" Version="4.3.0" />-->
   </ItemGroup>
 
   <ItemGroup>
