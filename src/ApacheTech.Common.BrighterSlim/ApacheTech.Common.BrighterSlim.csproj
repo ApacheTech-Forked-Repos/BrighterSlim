@@ -30,6 +30,7 @@
     <NeutralLanguage>en</NeutralLanguage>
     <AssemblyOriginatorKeyFile />
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/ApacheTech-Nuget-Packages/BrighterSlim</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>
